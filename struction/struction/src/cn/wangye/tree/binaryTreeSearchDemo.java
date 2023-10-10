@@ -3,7 +3,7 @@ package cn.wangye.tree;
 public class binaryTreeSearchDemo {
     public static void main(String[] args) {
         //现在这里有一点困惑，我是直接把所有的准备工作的做好，在开始new 对象，还是按着程序执行的顺序，一点一点地写呢
-
+        //先写最基础的HeroNode类。
         BinaryTree binaryTree = new BinaryTree();
         HeroNode heroNode1 = new HeroNode(1, "宋江");
         HeroNode heroNode2 = new HeroNode(2, "吴用");
@@ -17,11 +17,11 @@ public class binaryTreeSearchDemo {
         binaryTree.setRoot(heroNode1);
         heroNode1.setLeft(heroNode2);
         heroNode1.setRight(heroNode3);
-        heroNode2.setLeft(heroNode6);
-        heroNode2.setRight(heroNode7);
+//        heroNode2.setLeft(heroNode6);
+//        heroNode2.setRight(heroNode7);
         heroNode3.setLeft(heroNode5);
         heroNode3.setRight(heroNode4);
-        heroNode7.setRight(heroNode8);
+//        heroNode7.setRight(heroNode8);
 
 //    binaryTree.preOrder();
 //    System.out.println("--------");
@@ -53,7 +53,15 @@ public class binaryTreeSearchDemo {
         } else {
             System.out.println("找不到");
         }
+        //
+        binaryTree.deleteNode(3);
 
+        HeroNode node1 = binaryTree.postOrderSearch(5);
+        if (node1 != null) {
+            System.out.println(node1);
+        } else {
+            System.out.println("找不到");
+        }
     }
 }
 
@@ -108,6 +116,13 @@ class BinaryTree {
         }
     }
 
+    public void deleteNode(int no) {
+        if (this.root != null) {
+            this.root.deleteNode(no);
+        } else {
+            System.out.println("树为空");
+        }
+    }
 
 }
 
@@ -278,5 +293,48 @@ class HeroNode {
         }
 
         return null;
+    }
+
+    public void deleteNode(int no) {
+        //由于链表是单向的，所以需要有两个变量来控制（这个逻辑可以简化，不需要有temp，直接用this和this.left就可以了）
+        /*HeroNode temp = null;
+        if (this.left!=null){
+            temp this= .left;
+            if (temp.no==no){//
+                this.left = null;
+                System.out.println("已删除"+temp);
+                return;
+            }
+            this.left.deleteNode(no);
+        }*/
+
+        if (this.left != null && this.left.no == no) {//当前节点的左子节点不为空，并且左子节点的no=删除的no
+            System.out.println("已删除" + this.left);
+            this.left = null;
+            return;
+        }
+
+        if (this.right != null && this.right.no == no) {//当前节点的左子节点不为空，并且左子节点的no=删除的no
+            System.out.println("已删除" + this.right);
+            this.right = null;
+            return;
+        }
+        if (this.left !=null){
+            this.left.deleteNode(no);
+        }
+        if (this.right!=null){
+            this.right.deleteNode(no);
+        }
+        //执行到这里，不管有没有返回值，返回条件，递归都会终止。
+        //这里仍然是有递归终止的条件的，只不过隐藏起来的，只有递归的左节点和右节点都为空，递归才会终止，隐含的
+        /*
+        * 这一个遍历树的递归，终止条件有三个
+        * 1.在左遍历中找到了自己要删除的节点
+        * 2.在右遍历中找到了自己要删除的节点
+        * 3.左右节点都为空，只有都为空的，才会向上回溯，通过不断地递归，回溯，递归，回溯，将整个二叉树遍历完
+        * 算法结束。所以，这里就出现了一个问题，没有找到删除节点的信息都不好往上面添加。
+        *
+        * */
+
     }
 }
