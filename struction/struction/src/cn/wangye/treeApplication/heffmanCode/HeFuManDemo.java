@@ -1,55 +1,143 @@
 package cn.wangye.treeApplication.heffmanCode;
 
+import java.io.*;
 import java.util.*;
+
 /*目前存在一个问题，我的解码依赖于第一次压缩的长度，这个是比较不合理的。
-* 其他解决：在压缩结构后+一个空格，作为压缩的冗余;
-*
-* */
+ * 其他解决：在压缩结构后+一个空格，作为压缩的冗余;
+ *
+ * */
 public class HeFuManDemo {
-    static String newStr = "";
+    static StringBuilder stringBuilder = new StringBuilder();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ClassNotFoundException {
+        //这是压缩文件
+        String srcFile = "C:\\Users\\wang'ye\\OneDrive\\图片\\屏幕快照\\泰姬陵.png";
+        String dstFile = "E:/text/泰姬陵.zip";
+        zipFile(srcFile,dstFile);
+        System.out.println("压缩成功");
+//        解压文件
+        String srcFile1 = "E:/text/泰姬陵.zip";
+        String dstFile1 = "E:/text/taiJiLandscape.png";
+        unZipFile(srcFile1, dstFile1);
+        System.out.println("解压成功");
 
-//        String content = "world world i like like like java do you like a java hello world";
-        String content = "world world i like like like java do you like a java hello";
-//        String content = "world world i like like like java do you like a java";
 
+//        String content = "i like like like java do you like a java";
+//        byte[] bytes = content.getBytes();
+//        huffmanZip(bytes);
+  /*      String content = "i like like like java do you like a java";
         byte[] byteCodes = zip(content);//返回一个这样的数组:[-88, -65, -56, -65, -56, 28]
-        String decodeCodes = decode(byteCodes, codes);
-        System.out.println(decodeCodes);
+        String decodeCodes = decode(byteCodes, huffmanCodes);
+        System.out.println(decodeCodes);*/
     }
 
-    public static byte[] zip(String content) {
-        byte[] bytes = content.getBytes();  //将字符串转化成一个byte类型的数组，即字符串中字符对应的ASCII编码;
+
+    public static void unZipFile(String srcFile, String dstFile) throws ClassNotFoundException {
+        FileInputStream fileInputStream = null;
+        ObjectInputStream objectInputStream = null;
+        FileOutputStream fileOutputStream = null;
+        try {
+            fileInputStream = new FileInputStream(srcFile);
+            objectInputStream = new ObjectInputStream(fileInputStream);
+            fileOutputStream = new FileOutputStream(dstFile);
+
+            byte[] huffmanBytes = (byte[]) objectInputStream.readObject();
+
+            Map<Byte, String> huffmanCodes = (Map<Byte, String>) objectInputStream.readObject();
+            byte[] b = decode(huffmanBytes, huffmanCodes);
+
+            fileOutputStream.write(b);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                objectInputStream.close();
+                fileInputStream.close();
+                fileOutputStream.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+        }
+    }
+
+
+    /**
+     * 文件压缩功能
+     *
+     * @param srcFile 压缩文件的路径
+     * @param dstFile 压缩后的文件存放路径
+     */
+    public static void zipFile(String srcFile, String dstFile) {
+        FileInputStream is = null;
+        OutputStream os = null;
+        ObjectOutputStream oos = null;
+        try {
+            is = new FileInputStream(srcFile);
+            byte[] b = new byte[is.available()];
+            is.read(b);
+            byte[] huffmanBytes = huffmanZip(b);
+            os = new FileOutputStream(dstFile);
+            oos = new ObjectOutputStream(os);//创建一个和文件输出流相关联的ObjectOutputStream;
+            oos.writeObject(huffmanBytes);//把文件压缩出来的huffmanBytes写入文件中
+            oos.writeObject(huffmanCodes);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        } finally {
+            try {
+                os.close();
+                oos.close();
+                is.close();
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
+
+    /**
+     * 赫夫曼文件压缩，
+     *
+     * @param bytes byte[]类型的数据；
+     * @return 赫夫曼编码完成后的数据；
+     */
+    public static byte[] huffmanZip(byte[] bytes) {
         List<Node> list = createList(bytes);
         Node root = createHuffmanTree(list);
+        //这里实际上就是遍历了这个huffman树，并取出了每一个节点的值，将其存入了Map<Byte, String> huffmanCodes
         getCodes(root, "", new StringBuilder());
-        for (int i = 0; i < content.length(); i++) {
-            Byte findValue = (byte) content.charAt(i);
-            newStr += codes.get(findValue);//通过赫夫曼树编译成101010011001的长字符串。
-        }
-        System.out.println(newStr);
-        System.out.println(newStr.length());
+        byte[] huffmanCodeBytes = zip(bytes, huffmanCodes);
+        return huffmanCodeBytes;
+    }
 
+
+    public static byte[] zip(byte[] bytes, Map<Byte, String> huffmanCodes) {
+//        StringBuilder stringBuilder = new StringBuilder();
+        for (byte b : bytes) {
+            stringBuilder.append(huffmanCodes.get(b));//强呀！！！
+        }
         /*
          * 这种压缩没有体现出数字的优势，需要进一步地进行压缩操作;
          * 现在这样的文件压缩成了01010101001001010的格式，我们可以通过二进制的转化成一个数字，其中第一位表示符号位
          * 现在进行二进制压缩，将8个字符作为一个byte，（补码-》反码-》原码）
          * */
         int len;
-        if (newStr.length() % 8 == 0) {
-            len = newStr.length() / 8;
+        if (stringBuilder.length() % 8 == 0) {
+            len = stringBuilder.length() / 8;
         } else {
-            len = newStr.length() / 8 + 1;
+            len = stringBuilder.length() / 8 + 1;
         }
         byte[] huffmanCodeBytes = new byte[len];
         int index = 0;
-        for (int i = 0; i < newStr.length(); i += 8) {
+        for (int i = 0; i < stringBuilder.length(); i += 8) {
             String strByte;
-            if (i + 8 > newStr.length()) {
-                strByte = newStr.substring(i);//直接截取到最后一位，不够的话，会自动用0补齐八位。
+            if (i + 8 > stringBuilder.length()) {
+                strByte = stringBuilder.substring(i);//直接截取到最后一位，不够的话，会自动用0补齐八位。
             } else {
-                strByte = newStr.substring(i, i + 8);
+                strByte = stringBuilder.substring(i, i + 8);
             }
 //            将strByte转成一个byte,放入到huffmanCodeBytes
             huffmanCodeBytes[index] = (byte) Integer.parseInt(strByte, 2);//将其转化成int类型的数据，挺强大的。
@@ -67,7 +155,15 @@ public class HeFuManDemo {
      * */
 //    配对结果，这是一长串的01010110的字符串
 //    我手上的钥匙有map     key-value:字母-路径 32-01 我需要从value来获取key
-    public static String decode(byte[] byteCodes, Map<Byte, String> codes) {
+    public static byte[] decode(byte[] byteCodes, Map<Byte, String> codes) {
+        //      将byteCodes进行转化，byte[] ->010010101 ->String
+        StringBuilder stringBuilder1 = new StringBuilder();
+        for (int i = 0; i < byteCodes.length; i++) {
+            boolean flag = (i == byteCodes.length - 1);
+            byte b = byteCodes[i];
+            stringBuilder1.append(byteToBitString(!flag, b, stringBuilder1.length()));
+        }
+
 //        将map的内容进行反转;
         Map<String, Byte> newCodes = new HashMap<>();
         //学会了如何使用forEach进行map集合的遍历
@@ -75,18 +171,35 @@ public class HeFuManDemo {
             newCodes.put(value, key);
         });
 
-        String str = "";
+//
+//      创建一个list集合,存放byte
+        List<Byte> list = new ArrayList<>();
+        for (int i = 0; i < stringBuilder1.length();) {
+            int count = 1;
+            boolean flag = true;
+            Byte b = null;
+            while(flag){
+                String key = stringBuilder1.substring(i,i+count);
+                b = newCodes.get(key);
+                if (b==null){
+                    count++;
+                }else{
+                    flag = false;
+                }
+            }
+            list.add(b);
+            i+=count;
+        }
+        byte[] b = new byte[list.size()];
+        for (int i = 0 ;i<b.length;i++){
+            b[i] = list.get(i);
+        }
+        return b;
+
+      /*  String str = "";
         String letter = "";
         String newString = "";
 
-//      将byteCodes进行转化，byte[] ->010010101 ->String
-        for (int i = 0; i < byteCodes.length; i++) {
-            boolean flag = (i == byteCodes.length - 1);
-            byte b = byteCodes[i];
-            str += byteToBitString(!flag, b, str.length());
-        }
-        System.out.println(str);
-        System.out.println(str.length());
         for (int i = 0; i < str.length(); i++) {
             letter += str.charAt(i);
             Byte by = newCodes.get(letter);
@@ -95,7 +208,9 @@ public class HeFuManDemo {
                 letter = "";
             }
         }
+        System.out.println(newString);
         return newString;
+        */
     }
 
 
@@ -123,11 +238,10 @@ public class HeFuManDemo {
              * 这里设计一个可以除尽，除不尽的问题 除以8
              * */
             int binLength = length + binaryString.length();
-            System.out.println("最后一个长度" + binLength);
-            if (newStr.length() != binLength) {
-                int subtract = newStr.length() - binLength;
+            if (stringBuilder.length() != binLength) {
+                int subtract = stringBuilder.length() - binLength;
                 for (int i = 0; i < subtract; i++) {
-                    binaryString = "0"+binaryString;
+                    binaryString = "0" + binaryString;
                 }
             }
             return binaryString;
@@ -137,7 +251,7 @@ public class HeFuManDemo {
     //这里我想要生成一个哈夫曼树每一个数据节点，对应的路径code
 //    我需要遍历所有的节点，然后获取其路径
 //    1.路径的存储的数据结构应该使用hashMap   Map<byte,String>
-    static Map<Byte, String> codes = new HashMap<>();//先执行静态代码块
+    static Map<Byte, String> huffmanCodes = new HashMap<>();//先执行静态代码块
 
 //    这里写一个遍历哈夫曼树的方法，并记录路径，将找到的数据节点存储在map当中
 //    如果想要遍历一棵树，那么一般是使用递归的，除非是线索化二叉树。
@@ -159,7 +273,7 @@ public class HeFuManDemo {
                 //向右进行递归；
                 getCodes(node.right, "1", stringBuilder2);
             } else {
-                codes.put(node.data, stringBuilder2.toString());
+                huffmanCodes.put(node.data, stringBuilder2.toString());
             }
         }
     }
